@@ -1,1 +1,6 @@
 python-dotenv
+apache-airflow
+kafka-python
+cassandra-driver
+pandas
+scikit-learn
