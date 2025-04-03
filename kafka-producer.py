@@ -1,12 +1,17 @@
 import logging
+import os
+
 import requests
 import json
 from time import sleep
 from datetime import datetime
 from kafka import KafkaProducer
-import config
+from dotenv import load_dotenv
 
-kafka_server = [config.server]
+load_dotenv()
+server = os.getenv("server")
+
+kafka_server = [server]
 topic_campaign = "campaign_performance_topic"
 topic_leads = "leads_generated_topic"
 topic_phone = "phone_metrics_topic"

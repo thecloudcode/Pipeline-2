@@ -1,8 +1,12 @@
 import json
-from kafka import KafkaConsumer
-import config
+import os
 
-kafka_server = [config.server]
+from kafka import KafkaConsumer
+from dotenv import load_dotenv
+
+load_dotenv()
+server = os.getenv("server")
+kafka_server = [server]
 
 topics = [
     "campaign_performance_topic",

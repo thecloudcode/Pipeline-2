@@ -1,3 +1,5 @@
+import os
+
 try:
     from datetime import timedelta
     from airflow import DAG
@@ -6,7 +8,7 @@ try:
     from kafka import KafkaConsumer
     import json
     from cassandra.cluster import Cluster
-    import config
+    from dotenv import load_dotenv
     import time
     import pandas as pd
     import re
@@ -15,6 +17,9 @@ try:
 
 except Exception as e:
     print("Error  {} ".format(e))
+
+load_dotenv()
+server = os.getenv("server")
 
 def clean_dataframe(df):
     def remove_html_tags(text):
@@ -99,7 +104,7 @@ def clean(data_org):
 
 
 def insert_into_campaingperformance(data):
-    cluster = Cluster([config.server], port=9042)
+    cluster = Cluster([server], port=9042)
     session = cluster.connect('futurense')
     query = """
     INSERT INTO campaignperformance (
@@ -127,7 +132,7 @@ def insert_into_campaingperformance(data):
     cluster.shutdown()
 
 def consume_from_kafka():
-    kafka_server = [config.server + ":9092"]
+    kafka_server = [server + ":9092"]
     topic = "campaign_performance_topic"
 
     consumer = KafkaConsumer(
