@@ -4,3 +4,4 @@ RUN pip install pandas
 RUN pip install kafka-python
 RUN pip install cassandra-driver
 RUN pip install scikit-learn
+RUN pip install python-dotenv

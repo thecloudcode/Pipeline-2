@@ -4,3 +4,5 @@ kafka-python
 cassandra-driver
 pandas
 scikit-learn
+requests
+kafka-python

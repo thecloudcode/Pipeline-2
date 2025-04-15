@@ -19,7 +19,8 @@ except Exception as e:
     print("Error  {} ".format(e))
 
 load_dotenv()
-server = os.getenv("server")
+server = os.getenv("server", "ktech_cassandra")
+
 
 def clean_dataframe(df):
     def remove_html_tags(text):
@@ -66,6 +67,7 @@ def clean_dataframe(df):
 
     return df
 
+
 def impute(df, col):
     df = df.copy()
 
@@ -102,6 +104,40 @@ def clean(data_org):
     return data.to_dict(orient="records")[0]
 
 
+def create_table_if_not_exists():
+    try:
+        cluster = Cluster([server], port=9042)
+        session = cluster.connect()
+
+        session.execute("""
+            CREATE KEYSPACE IF NOT EXISTS futurense 
+            WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}
+        """)
+
+        session.execute("USE futurense")
+
+        session.execute("""
+            CREATE TABLE IF NOT EXISTS campaignperformance (
+                dates timestamp,
+                campaign_name text,
+                creative_name text,
+                adset_name text,
+                platform text,
+                total_spent float,
+                impressions int,
+                clicks int,
+                click_through_rate float,
+                leads int,
+                PRIMARY KEY (dates, campaign_name, creative_name)
+            )
+        """)
+        print("Table creation successful or already exists")
+    except Exception as e:
+        print(f"Error creating table: {e}")
+    finally:
+        session.shutdown()
+        cluster.shutdown()
+
 
 def insert_into_campaingperformance(data):
     cluster = Cluster([server], port=9042)
@@ -131,6 +167,7 @@ def insert_into_campaingperformance(data):
     session.shutdown()
     cluster.shutdown()
 
+
 def consume_from_kafka():
     kafka_server = [server + ":9092"]
     topic = "campaign_performance_topic"
@@ -150,20 +187,26 @@ def consume_from_kafka():
         except Exception as e:
             print(f"Error inserting data into Cassandra: {e}")
 
-with DAG(
-    dag_id="campaigns",
-    schedule_interval="*/1 * * * *",
-    default_args={
-        "owner": "airflow",
-        "retries": 1,
-        "retry_delay": timedelta(minutes=7),
-        "start_date": datetime(2024, 8, 3),
-    },
-    catchup=False
-) as dag:
 
-    execute_task = PythonOperator(
+with DAG(
+        dag_id="campaigns",
+        schedule_interval="*/1 * * * *",
+        default_args={
+            "owner": "airflow",
+            "retries": 1,
+            "retry_delay": timedelta(minutes=7),
+            "start_date": datetime(2024, 8, 3),
+        },
+        catchup=False
+) as dag:
+    create_table_task = PythonOperator(
+        task_id="create_cassandra_table",
+        python_callable=create_table_if_not_exists,
+    )
+
+    consume_task = PythonOperator(
         task_id="consume_from_kafka",
         python_callable=consume_from_kafka,
     )
-    execute_task
+
+    create_table_task >> consume_task
